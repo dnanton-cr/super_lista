@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Lista de Compras Supermercado - v3.1</title>
+
+  <!-- 
+    ==========================================================================
+    APLICACIÓN: Lista de Compras para Supermercado (SuperLista)
+    VERSIÓN: 3.1.0
+    FECHA: 27 Septiembre 2026
+
+    MEJORAS Y CARACTERÍSTICAS EN ESTA VERSIÓN:
+    1. Exportar e Importar Datos (JSON): Permite descargar un respaldo completo
+       de la lista en un archivo .json y cargarlo en cualquier otro dispositivo
+       o navegador para transferir tus artículos fácilmente.
+    2. Preservación de Datos entre Actualizaciones: La app detecta y migra 
+       automáticamente la información guardada en versiones anteriores (v1/v2/v3)
+       sin sobrescribir ni borrar tus datos editados o existentes.
+    3. Reordenamiento Jerárquico de Pantalla:
+       - 1. Lista "Por Comprar" activa con filtro por supermercado en la cima.
+       - 2. Formulario "Incluir Nuevo Artículo" en la sección central.
+       - 3. "Historial de Ya Comprados" colapsable en la parte inferior.
+    4. Copiado / Duplicado Rápido: Botón directo (📋) para duplicar productos 
+       sin reescribir nombre, cantidad ni tienda.
+    5. Reutilización Directa desde Historial: Desmarca casillas o presiona "Reutilizar"
+       para mover productos del historial de vuelta a la lista por comprar.
+    6. Modo 100% Offline: Contiene estilos CSS embebidos de respaldo. Funciona 
+       perfectamente sin conexión a internet desde el almacenamiento del móvil.
+    ==========================================================================
+  -->
+  
+  <!-- Tailwind CSS CDN para renderizado estilizado online -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Estilos CSS Embebidos como fallback offline para el teléfono -->
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #f3f4f6; color: #1f2937; padding-bottom: 30px; }
+    .container-fallback { max-width: 600px; margin: 0 auto; padding: 12px; }
+    .card-fallback { background: #ffffff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .btn-fallback { padding: 10px 16px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-primary { background-color: #16a34a; color: white; }
+    .btn-secondary { background-color: #e5e7eb; color: #374151; }
+    .input-fallback { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; margin-bottom: 10px; font-size: 16px; }
+    .item-card { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 8px; background: white; }
+    .completed-item { background-color: #f9fafb; text-decoration: line-through; opacity: 0.75; }
+    .badge { font-size: 11px; padding: 2px 8px; border-radius: 9999px; font-weight: 600; text-transform: uppercase; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen pb-12">
+
+  <!-- Header -->
+  <header class="bg-emerald-600 text-white p-4 shadow-md sticky top-0 z-30">
+    <div class="max-w-md mx-auto flex justify-between items-center">
+      <h1 class="text-xl font-bold flex items-center gap-2">
+        🛒 SuperLista <span class="text-xs bg-emerald-800 text-emerald-100 px-2 py-0.5 rounded-full font-normal">v3.1</span>
+      </h1>
+      <span class="text-xs bg-emerald-700 px-2.5 py-1 rounded-full font-medium">Offline Ready</span>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto p-3 space-y-4 container-fallback">
+
+    <!-- 1. SECCIÓN: LISTA DE POR COMPRAR (PANTALLA SUPERIOR) -->
+    <section class="bg-white rounded-xl shadow-sm p-4 card-fallback border border-gray-100">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+          📋 Por Comprar
+          <span id="active-count" class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </h2>
+      </div>
+
+      <!-- Filtro por Supermercado -->
+      <div class="mb-4">
+        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Filtrar por Supermercado:</label>
+        <div id="store-filters" class="flex flex-wrap gap-1.5">
+          <!-- Filtros dinámicos -->
+        </div>
+      </div>
+
+      <!-- Lista de Artículos Activos -->
+      <div id="pending-list" class="space-y-2">
+        <!-- Ítems por comprar dinámicos -->
+      </div>
+
+      <div id="empty-pending" class="text-center py-6 text-gray-400 hidden">
+        <p class="text-sm">No hay productos pendientes en esta lista.</p>
+      </div>
+    </section>
+
+
+    <!-- 2. SECCIÓN: INCLUIR NUEVO ARTÍCULO (CENTRO) -->
+    <section class="bg-white rounded-xl shadow-sm p-4 card-fallback border border-gray-100">
+      <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+        ➕ Incluir Nuevo Artículo
+      </h2>
+      <form id="item-form" onsubmit="handleFormSubmit(event)" class="space-y-3">
+        <input type="hidden" id="editing-id" value="">
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Nombre del artículo *</label>
+          <input type="text" id="item-name" required placeholder="Ej. Leche descremada" class="input-fallback w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Cantidad estimada</label>
+            <input type="text" id="item-qty" placeholder="Ej. 2 cajas" class="input-fallback w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Supermercado</label>
+            <input type="text" id="item-store" list="store-suggestions" placeholder="Ej. Auto Mercado" class="input-fallback w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            <datalist id="store-suggestions">
+              <option value="Walmart">
+              <option value="Auto Mercado">
+              <option value="Pali">
+              <option value="Masxmenos">
+              <option value="Pricesmart">
+            </datalist>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button type="submit" id="btn-save" class="btn-fallback btn-primary flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm transition-colors text-sm">
+            Guardar Producto
+          </button>
+          <button type="button" id="btn-cancel" onclick="resetForm()" class="btn-fallback btn-secondary hidden py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors text-sm">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </section>
+
+
+    <!-- 3. SECCIÓN: LISTA COLAPSABLE CON COMPRADOS (INFERIOR) -->
+    <section class="bg-white rounded-xl shadow-sm card-fallback border border-gray-100 overflow-hidden">
+      <button onclick="toggleCompletedSection()" class="w-full p-4 flex justify-between items-center bg-gray-50 hover:bg-gray-100 text-left transition-colors">
+        <span class="font-bold text-gray-700 flex items-center gap-2">
+          ✅ Ya Comprados / Historial
+          <span id="completed-count" class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+        </span>
+        <span id="toggle-icon" class="text-gray-500 font-bold text-sm">▼ Mostrar</span>
+      </button>
+
+      <div id="completed-container" class="p-4 border-t border-gray-100 hidden">
+        <p class="text-xs text-gray-500 mb-3">Puedes desmarcar cualquier ítem o presionar "Reutilizar" para moverlo de nuevo a la lista por comprar.</p>
+        <div id="completed-list" class="space-y-2">
+          <!-- Ítems completados dinámicos -->
+        </div>
+        <div id="empty-completed" class="text-center py-4 text-gray-400 hidden">
+          <p class="text-sm">No hay productos en el historial.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 4. SECCIÓN: RESPALDO Y TRANSFERENCIA DE DATOS (JSON) -->
+    <section class="bg-white rounded-xl shadow-sm p-4 card-fallback border border-gray-100">
+      <h2 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+        💾 Copia de Seguridad y Transferencia (JSON)
+      </h2>
+      <p class="text-xs text-gray-500 mb-3">Exporta tus productos a un archivo JSON para moverlos a otro teléfono o computadora, o restáuralos cuando lo necesites.</p>
+      
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="exportDataJSON()" class="btn-fallback bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded-lg font-semibold flex items-center justify-center gap-1">
+          📥 Exportar a JSON
+        </button>
+        
+        <label class="btn-fallback bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 rounded-lg font-semibold flex items-center justify-center gap-1 cursor-pointer text-center">
+          📤 Importar JSON
+          <input type="file" id="import-json-file" accept=".json" onchange="importDataJSON(event)" class="hidden">
+        </label>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Clave de almacenamiento para la versión 3.1
+    const CURRENT_STORAGE_KEY = 'supermarket_items_v3';
+
+    // Estado de la Aplicación
+    let items = [];
+    let currentFilter = 'ALL';
+
+    // Inicialización
+    document.addEventListener('DOMContentLoaded', () => {
+      loadAndMigrateLocalStorage();
+      renderApp();
+    });
+
+    // Guardado y Carga Inteligente de Datos
+    function saveLocalStorage() {
+      localStorage.setItem(CURRENT_STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function loadAndMigrateLocalStorage() {
+      let data = localStorage.getItem(CURRENT_STORAGE_KEY);
+      
+      // Intentar recuperar de versiones previas si no existe v3
+      if (!data) {
+        data = localStorage.getItem('supermarket_items_v2') || localStorage.getItem('supermarket_items_v1');
+      }
+
+      if (data) {
+        try {
+          items = JSON.parse(data);
+          saveLocalStorage();
+        } catch (e) {
+          items = [];
+        }
+      } else {
+        // Datos iniciales solo si está totalmente limpio
+        items = [
+          { id: '1', name: 'Leche entera', qty: '2 Litros', store: 'Walmart', completed: false },
+          { id: '2', name: 'Pan integral', qty: '1 bolsa', store: 'Auto Mercado', completed: false },
+          { id: '3', name: 'Café molido', qty: '500g', store: 'Pali', completed: true }
+        ];
+        saveLocalStorage();
+      }
+    }
+
+    // Renderizado Principal
+    function renderApp() {
+      renderFilters();
+      renderPendingList();
+      renderCompletedList();
+      updateCounts();
+    }
+
+    // Renderizar Filtros por Supermercado
+    function renderFilters() {
+      const container = document.getElementById('store-filters');
+      const stores = [...new Set(items.filter(i => !i.completed && i.store).map(i => i.store.trim()))];
+      
+      let html = `
+        <button onclick="setFilter('ALL')" class="px-3 py-1 text-xs rounded-full font-semibold transition-all ${
+          currentFilter === 'ALL' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        }">Todos</button>
+      `;
+
+      stores.forEach(store => {
+        const active = currentFilter === store;
+        html += `
+          <button onclick="setFilter('${escapeQuotes(store)}')" class="px-3 py-1 text-xs rounded-full font-semibold transition-all ${
+            active ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }">${escapeHtml(store)}</button>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function setFilter(store) {
+      currentFilter = store;
+      renderApp();
+    }
+
+    // Renderizar Lista Por Comprar
+    function renderPendingList() {
+      const container = document.getElementById('pending-list');
+      const emptyState = document.getElementById('empty-pending');
+
+      const pendingItems = items.filter(i => !i.completed && (currentFilter === 'ALL' || i.store === currentFilter));
+
+      if (pendingItems.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      container.innerHTML = pendingItems.map(item => `
+        <div class="item-card bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between gap-2 shadow-sm">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <input type="checkbox" onchange="toggleItem('${item.id}')" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-gray-800 text-sm truncate">${escapeHtml(item.name)}</p>
+              <div class="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                ${item.qty ? `<span>📦 ${escapeHtml(item.qty)}</span>` : ''}
+                ${item.store ? `<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 text-gray-600">🏪 ${escapeHtml(item.store)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="duplicateItem('${item.id}')" title="Copiar/Duplicar" class="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-gray-100 rounded">📋</button>
+            <button onclick="editItem('${item.id}')" title="Editar" class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded">✏️</button>
+            <button onclick="deleteItem('${item.id}')" title="Eliminar" class="p-1.5 text-gray-500 hover:text-red-600 hover:bg-gray-100 rounded">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Renderizar Historial de Comprados
+    function renderCompletedList() {
+      const container = document.getElementById('completed-list');
+      const emptyState = document.getElementById('empty-completed');
+
+      const completedItems = items.filter(i => i.completed);
+
+      if (completedItems.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      container.innerHTML = completedItems.map(item => `
+        <div class="item-card completed-item p-2.5 rounded-lg border border-gray-200 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <input type="checkbox" checked onchange="toggleItem('${item.id}')" title="Desmarcar para volver a comprar" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-gray-500 line-through text-sm truncate">${escapeHtml(item.name)}</p>
+              <div class="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
+                ${item.qty ? `<span>📦 ${escapeHtml(item.qty)}</span>` : ''}
+                ${item.store ? `<span>🏪 ${escapeHtml(item.store)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="toggleItem('${item.id}')" title="Volver a comprar" class="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-semibold rounded">Reutilizar</button>
+            <button onclick="duplicateItem('${item.id}')" title="Copiar" class="p-1.5 text-gray-400 hover:text-gray-700">📋</button>
+            <button onclick="deleteItem('${item.id}')" title="Eliminar" class="p-1.5 text-gray-400 hover:text-red-600">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Actualizar Contadores
+    function updateCounts() {
+      const pendingCount = items.filter(i => !i.completed).length;
+      const completedCount = items.filter(i => i.completed).length;
+      document.getElementById('active-count').innerText = pendingCount;
+      document.getElementById('completed-count').innerText = completedCount;
+    }
+
+    // Formulario: Guardar o Editar
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const idInput = document.getElementById('editing-id').value;
+      const nameInput = document.getElementById('item-name').value.trim();
+      const qtyInput = document.getElementById('item-qty').value.trim();
+      const storeInput = document.getElementById('item-store').value.trim();
+
+      if (!nameInput) return;
+
+      if (idInput) {
+        // Actualizar existente
+        const index = items.findIndex(i => i.id === idInput);
+        if (index !== -1) {
+          items[index].name = nameInput;
+          items[index].qty = qtyInput;
+          items[index].store = storeInput;
+        }
+      } else {
+        // Crear nuevo
+        const newItem = {
+          id: Date.now().toString(),
+          name: nameInput,
+          qty: qtyInput,
+          store: storeInput,
+          completed: false
+        };
+        items.unshift(newItem);
+      }
+
+      saveLocalStorage();
+      resetForm();
+      renderApp();
+    }
+
+    // Editar Ítem
+    function editItem(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+
+      document.getElementById('editing-id').value = item.id;
+      document.getElementById('item-name').value = item.name;
+      document.getElementById('item-qty').value = item.qty || '';
+      document.getElementById('item-store').value = item.store || '';
+
+      document.getElementById('btn-save').innerText = 'Actualizar Artículo';
+      document.getElementById('btn-cancel').classList.remove('hidden');
+
+      window.scrollTo({ top: document.getElementById('item-form').offsetTop - 80, behavior: 'smooth' });
+    }
+
+    // Resetear Formulario
+    function resetForm() {
+      document.getElementById('editing-id').value = '';
+      document.getElementById('item-name').value = '';
+      document.getElementById('item-qty').value = '';
+      document.getElementById('item-store').value = '';
+      document.getElementById('btn-save').innerText = 'Guardar Producto';
+      document.getElementById('btn-cancel').classList.add('hidden');
+    }
+
+    // Duplicar / Copiar Ítem
+    function duplicateItem(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+
+      const duplicated = {
+        ...item,
+        id: Date.now().toString(),
+        name: `${item.name} (copia)`,
+        completed: false
+      };
+
+      items.unshift(duplicated);
+      saveLocalStorage();
+      renderApp();
+    }
+
+    // Marcar / Desmarcar
+    function toggleItem(id) {
+      const item = items.find(i => i.id === id);
+      if (item) {
+        item.completed = !item.completed;
+        saveLocalStorage();
+        renderApp();
+      }
+    }
+
+    // Eliminar
+    function deleteItem(id) {
+      if (confirm('¿Deseas eliminar este artículo?')) {
+        items = items.filter(i => i.id !== id);
+        saveLocalStorage();
+        renderApp();
+      }
+    }
+
+    // Alternar Visibilidad del Historial
+    function toggleCompletedSection() {
+      const container = document.getElementById('completed-container');
+      const icon = document.getElementById('toggle-icon');
+      const isHidden = container.classList.contains('hidden');
+
+      if (isHidden) {
+        container.classList.remove('hidden');
+        icon.innerText = '▲ Ocultar';
+      } else {
+        container.classList.add('hidden');
+        icon.innerText = '▼ Mostrar';
+      }
+    }
+
+    // ==========================================
+    // FUNCIONES DE EXPORTACIÓN / IMPORTACIÓN JSON
+    // ==========================================
+
+    // Exportar lista a un archivo .json descargable
+    function exportDataJSON() {
+      if (items.length === 0) {
+        alert('No hay productos para respaldar.');
+        return;
+      }
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const fileName = `respaldo_super_lista_${dateStr}.json`;
+      const jsonStr = JSON.stringify(items, null, 2);
+
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    }
+
+    // Importar lista desde un archivo .json seleccionado por el usuario
+    function importDataJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedItems = JSON.parse(e.target.result);
+          
+          if (!Array.isArray(importedItems)) {
+            alert('El archivo JSON no tiene un formato válido de lista.');
+            return;
+          }
+
+          if (confirm(`Se encontraron ${importedItems.length} artículos en el archivo. ¿Deseas reemplazar tu lista actual por esta?`)) {
+            items = importedItems;
+            saveLocalStorage();
+            renderApp();
+            alert('¡Lista restaurada exitosamente!');
+          }
+        } catch (err) {
+          alert('Error al leer el archivo JSON. Asegúrate de seleccionar un respaldo válido.');
+        }
+      };
+
+      reader.readAsText(file);
+      // Resetear el input file para permitir importar el mismo archivo de nuevo si es necesario
+      event.target.value = '';
+    }
+
+    // Funciones Auxiliares
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    function escapeQuotes(str) {
+      return (str || '').replace(/'/g, "\\'");
+    }
+  </script>
+</body>
+</html>
