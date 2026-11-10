@@ -6,11 +6,11 @@
   <title>Lista de Compras Supermercado - v3.2 (Firebase)</title>
 
   <!-- 
-    ==========================================================================
-    APLICACIÓN: Lista de Compras para Supermercado (SuperLista) - FNZ_DB
-    VERSIÓN: 3.2.0 (Con Firebase Firestore Integration)
-    FECHA: 9 Noviembre 2026
-    ==========================================================================
+  ==========================================================================
+  APLICACIÓN: Lista de Compras para Supermercado (SuperLista) - FNZ_DB
+  VERSIÓN: 3.2.0 (Con Firebase Firestore Integration)
+  FECHA: 9 Noviembre 2026
+  ==========================================================================
   -->
 
   <!-- 
@@ -18,7 +18,7 @@
   APLICACIÓN: Lista de Compras para Supermercado (SuperLista)
   VERSIÓN: 3.1.0
   FECHA: 27 Septiembre 2026
-
+  
   MEJORAS Y CARACTERÍSTICAS EN ESTA VERSIÓN:
   1. Exportar e Importar Datos (JSON): Permite descargar un respaldo completo
      de la lista en un archivo .json y cargarlo en cualquier otro dispositivo
@@ -37,13 +37,11 @@
   6. Modo 100% Offline: Contiene estilos CSS embebidos de respaldo. Funciona 
      perfectamente sin conexión a internet desde el almacenamiento del móvil.
   ==========================================================================
--->
-  
+  -->
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- Estilos CSS Embebidos como fallback offline -->
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     body { background-color: #f3f4f6; color: #1f2937; padding-bottom: 30px; }
@@ -94,13 +92,12 @@
       </div>
     </section>
 
-
     <!-- 2. SECCIÓN: INCLUIR NUEVO ARTÍCULO -->
     <section class="bg-white rounded-xl shadow-sm p-4 card-fallback border border-gray-100">
       <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
         ➕ Incluir Nuevo Artículo
       </h2>
-      <form id="item-form" onsubmit="handleFormSubmit(event)" class="space-y-3">
+      <form id="item-form" onsubmit="window.handleFormSubmit(event)" class="space-y-3">
         <input type="hidden" id="editing-id" value="">
 
         <div>
@@ -130,17 +127,16 @@
           <button type="submit" id="btn-save" class="btn-fallback btn-primary flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm transition-colors text-sm">
             Guardar Producto
           </button>
-          <button type="button" id="btn-cancel" onclick="resetForm()" class="btn-fallback btn-secondary hidden py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors text-sm">
+          <button type="button" id="btn-cancel" onclick="window.resetForm()" class="btn-fallback btn-secondary hidden py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors text-sm">
             Cancelar
           </button>
         </div>
       </form>
     </section>
 
-
     <!-- 3. SECCIÓN: HISTORIAL DE COMPRADOS -->
     <section class="bg-white rounded-xl shadow-sm card-fallback border border-gray-100 overflow-hidden">
-      <button onclick="toggleCompletedSection()" class="w-full p-4 flex justify-between items-center bg-gray-50 hover:bg-gray-100 text-left transition-colors">
+      <button onclick="window.toggleCompletedSection()" class="w-full p-4 flex justify-between items-center bg-gray-50 hover:bg-gray-100 text-left transition-colors">
         <span class="font-bold text-gray-700 flex items-center gap-2">
           ✅ Ya Comprados / Historial
           <span id="completed-count" class="bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
@@ -157,22 +153,20 @@
       </div>
     </section>
 
-
     <!-- 4. SECCIÓN: RESPALDO Y TRANSFERENCIA DE DATOS (JSON) -->
     <section class="bg-white rounded-xl shadow-sm p-4 card-fallback border border-gray-100">
       <h2 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
         💾 Copia de Seguridad y Transferencia (JSON)
       </h2>
-      <p class="text-xs text-gray-500 mb-3">Exporta tus productos locales o restáuralos a Firestore.</p>
       
       <div class="grid grid-cols-2 gap-2">
-        <button onclick="exportDataJSON()" class="btn-fallback bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded-lg font-semibold flex items-center justify-center gap-1">
+        <button onclick="window.exportDataJSON()" class="btn-fallback bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded-lg font-semibold flex items-center justify-center gap-1">
           📥 Exportar a JSON
         </button>
         
         <label class="btn-fallback bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 rounded-lg font-semibold flex items-center justify-center gap-1 cursor-pointer text-center">
           📤 Importar JSON
-          <input type="file" id="import-json-file" accept=".json" onchange="importDataJSON(event)" class="hidden">
+          <input type="file" id="import-json-file" accept=".json" onchange="window.importDataJSON(event)" class="hidden">
         </label>
       </div>
     </section>
@@ -182,37 +176,29 @@
   <!-- Firebase Scripts (Modular SDK v10) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // Reemplaza con los datos reales de tu proyecto FNZ_DB en Firebase Console
     // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyB62Ne9JxPxA23h9NJVseLuMGURsTp-hBk",
-    authDomain: "fnz-db.firebaseapp.com",
-    projectId: "fnz-db",
-    storageBucket: "fnz-db.firebasestorage.app",
-    messagingSenderId: "1005621440879",
-    appId: "1:1005621440879:web:b61d1e028989a5de29b89a"
+    const firebaseConfig = {
+      apiKey: "AIzaSyB62Ne9JxPxA23h9NJVseLuMGURsTp-hBk",
+      authDomain: "fnz-db.firebaseapp.com",
+      projectId: "fnz-db",
+      storageBucket: "fnz-db.firebasestorage.app",
+      messagingSenderId: "1005621440879",
+      appId: "1:1005621440879:web:b61d1e028989a5de29b89a"
     };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-    // Inicializar Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    let db;
     const COLLECTION_NAME = "shopping_lists";
-
     let items = [];
     let currentFilter = 'ALL';
 
     window.addEventListener('DOMContentLoaded', () => {
-      initFirebaseRealtimeSync();
-    });
-
-    // Sincronización en Tiempo Real con Firestore
-    function initFirebaseRealtimeSync() {
       const statusBadge = document.getElementById('sync-status');
       try {
+        const appInstance = initializeApp(firebaseConfig);
+        db = getFirestore(appInstance);
+
         onSnapshot(collection(db, COLLECTION_NAME), (snapshot) => {
           items = [];
           snapshot.forEach((docSnap) => {
@@ -221,20 +207,22 @@ const app = initializeApp(firebaseConfig);
               ...docSnap.data()
             });
           });
-          statusBadge.innerText = "Sincronizado";
+          statusBadge.innerText = "Conectado";
           statusBadge.className = "text-xs bg-emerald-800 px-2.5 py-1 rounded-full font-medium text-emerald-100";
-          renderApp();
+          window.renderApp();
         }, (error) => {
-          console.error("Error al sincronizar con Firebase:", error);
-          statusBadge.innerText = "Modo Offline";
-          statusBadge.className = "text-xs bg-amber-700 px-2.5 py-1 rounded-full font-medium text-amber-100";
+          console.error("Error en Firestore onSnapshot:", error);
+          statusBadge.innerText = "Error de Reglas";
+          statusBadge.className = "text-xs bg-red-700 px-2.5 py-1 rounded-full font-medium text-red-100";
         });
-      } catch (e) {
-        statusBadge.innerText = "Error Conexión";
-      }
-    }
 
-    // Renderizado principal
+      } catch (e) {
+        console.error("Error al inicializar Firebase:", e);
+        statusBadge.innerText = "Error Config";
+        statusBadge.className = "text-xs bg-red-700 px-2.5 py-1 rounded-full font-medium text-red-100";
+      }
+    });
+
     window.renderApp = function() {
       renderFilters();
       renderPendingList();
@@ -247,7 +235,7 @@ const app = initializeApp(firebaseConfig);
       const stores = [...new Set(items.filter(i => !i.completed && i.store).map(i => i.store.trim()))];
       
       let html = `
-        <button onclick="setFilter('ALL')" class="px-3 py-1 text-xs rounded-full font-semibold transition-all ${
+        <button onclick="window.setFilter('ALL')" class="px-3 py-1 text-xs rounded-full font-semibold transition-all ${
           currentFilter === 'ALL' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
         }">Todos</button>
       `;
@@ -255,7 +243,7 @@ const app = initializeApp(firebaseConfig);
       stores.forEach(store => {
         const active = currentFilter === store;
         html += `
-          <button onclick="setFilter('${escapeQuotes(store)}')" class="px-3 py-1 text-xs rounded-full font-semibold transition-all ${
+          <button onclick="window.setFilter('${escapeQuotes(store)}')" class="px-3 py-1 text-xs rounded-full font-semibold transition-all ${
             active ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }">${escapeHtml(store)}</button>
         `;
@@ -265,7 +253,7 @@ const app = initializeApp(firebaseConfig);
 
     window.setFilter = function(store) {
       currentFilter = store;
-      renderApp();
+      window.renderApp();
     }
 
     function renderPendingList() {
@@ -283,7 +271,7 @@ const app = initializeApp(firebaseConfig);
       container.innerHTML = pendingItems.map(item => `
         <div class="item-card bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between gap-2 shadow-sm">
           <div class="flex items-center gap-3 flex-1 min-w-0">
-            <input type="checkbox" onchange="toggleItem('${item.id}')" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
+            <input type="checkbox" onchange="window.toggleItem('${item.id}')" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
             <div class="min-w-0 flex-1">
               <p class="font-medium text-gray-800 text-sm truncate">${escapeHtml(item.name)}</p>
               <div class="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
@@ -293,9 +281,9 @@ const app = initializeApp(firebaseConfig);
             </div>
           </div>
           <div class="flex items-center gap-1">
-            <button onclick="duplicateItem('${item.id}')" title="Copiar" class="p-1.5 text-gray-500 hover:text-emerald-600 rounded">📋</button>
-            <button onclick="editItem('${item.id}')" title="Editar" class="p-1.5 text-gray-500 hover:text-blue-600 rounded">✏️</button>
-            <button onclick="deleteItem('${item.id}')" title="Eliminar" class="p-1.5 text-gray-500 hover:text-red-600 rounded">🗑️</button>
+            <button onclick="window.duplicateItem('${item.id}')" title="Copiar" class="p-1.5 text-gray-500 hover:text-emerald-600 rounded">📋</button>
+            <button onclick="window.editItem('${item.id}')" title="Editar" class="p-1.5 text-gray-500 hover:text-blue-600 rounded">✏️</button>
+            <button onclick="window.deleteItem('${item.id}')" title="Eliminar" class="p-1.5 text-gray-500 hover:text-red-600 rounded">🗑️</button>
           </div>
         </div>
       `).join('');
@@ -316,7 +304,7 @@ const app = initializeApp(firebaseConfig);
       container.innerHTML = completedItems.map(item => `
         <div class="item-card completed-item p-2.5 rounded-lg border border-gray-200 flex items-center justify-between gap-2">
           <div class="flex items-center gap-3 flex-1 min-w-0">
-            <input type="checkbox" checked onchange="toggleItem('${item.id}')" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
+            <input type="checkbox" checked onchange="window.toggleItem('${item.id}')" class="w-5 h-5 accent-emerald-600 rounded cursor-pointer">
             <div class="min-w-0 flex-1">
               <p class="font-medium text-gray-500 line-through text-sm truncate">${escapeHtml(item.name)}</p>
               <div class="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
@@ -326,9 +314,9 @@ const app = initializeApp(firebaseConfig);
             </div>
           </div>
           <div class="flex items-center gap-1">
-            <button onclick="toggleItem('${item.id}')" class="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-semibold rounded">Reutilizar</button>
-            <button onclick="duplicateItem('${item.id}')" class="p-1.5 text-gray-400 hover:text-gray-700">📋</button>
-            <button onclick="deleteItem('${item.id}')" class="p-1.5 text-gray-400 hover:text-red-600">🗑️</button>
+            <button onclick="window.toggleItem('${item.id}')" class="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-semibold rounded">Reutilizar</button>
+            <button onclick="window.duplicateItem('${item.id}')" class="p-1.5 text-gray-400 hover:text-gray-700">📋</button>
+            <button onclick="window.deleteItem('${item.id}')" class="p-1.5 text-gray-400 hover:text-red-600">🗑️</button>
           </div>
         </div>
       `).join('');
@@ -339,7 +327,6 @@ const app = initializeApp(firebaseConfig);
       document.getElementById('completed-count').innerText = items.filter(i => i.completed).length;
     }
 
-    // Acciones Firestore
     window.handleFormSubmit = async function(e) {
       e.preventDefault();
       const idInput = document.getElementById('editing-id').value;
@@ -362,7 +349,7 @@ const app = initializeApp(firebaseConfig);
             createdAt: new Date().toISOString()
           });
         }
-        resetForm();
+        window.resetForm();
       } catch (err) {
         alert("Error al guardar en Firebase: " + err.message);
       }
@@ -450,7 +437,7 @@ const app = initializeApp(firebaseConfig);
       const a = document.createElement('a');
       a.href = url;
       a.download = `respaldo_fnz_super_lista_${new Date().toISOString().slice(0, 10)}.json`;
-      document.api?.appendChild(a) || document.body.appendChild(a);
+      document.body.appendChild(a);
       a.click();
       setTimeout(() => a.remove(), 100);
     }
@@ -466,9 +453,9 @@ const app = initializeApp(firebaseConfig);
             alert('Formato JSON inválido.');
             return;
           }
-          if (confirm(`Se cargarán ${importedItems.length} elementos a Firebase. ¿Deseas continuar?`)) {
+          if (confirm(`Se cargarán ${imported.length} elementos a Firebase. ¿Deseas continuar?`)) {
             for (let item of imported) {
-              delete item.id; // Evitar conflictos de ID al migrar
+              delete item.id;
               await addDoc(collection(db, COLLECTION_NAME), item);
             }
             alert('¡Importación completada con éxito!');
